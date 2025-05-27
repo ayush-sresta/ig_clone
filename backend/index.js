@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import connectDB from "./utils/db.js";
 import userRoute from "./routes/user.route.js";
+import postRoute from "./routes/post.route.js";
+import messageRoute from "./routes/message.route.js";
 
 // .env
 dotenv.config({});
@@ -22,6 +24,8 @@ app.use(cors(corsOptions));
 
 // api here
 app.use("/api/v1/user", userRoute);
+app.use("/api/v1/post", postRoute);
+app.use("/api/v1/message", messageRoute);
 
 // routes
 

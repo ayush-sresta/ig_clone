@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { getDataUri } from "../utils/datauri.js";
 import cloudinary from "../utils/cloudinary.js";
+import { Post } from "../models/post.model.js";
 
 export const register = async (req, res) => {
   try {
@@ -16,9 +17,13 @@ export const register = async (req, res) => {
     const user = await User.findOne({ email });
     if (user) {
       return res.status(401).json({
-        message: "User already exists",
+        message: "This email is already registered",
         status: "error",
       });
+    }
+    const existingUsername = await User.findOne({username})
+    if(existingUsername) {
+      return res.status(401).json({ status: "error", message: "Username not available" });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     await User.create({
@@ -26,7 +31,7 @@ export const register = async (req, res) => {
       email,
       password: hashedPassword,
     });
-    return res.status(401).json({
+    return res.status(200).json({
       message: "Account created successfully",
       status: "success",
     });
@@ -63,6 +68,15 @@ export const login = async (req, res) => {
       expiresIn: "1d",
     });
 
+    const populatedPosts = await Promise.all(
+      user.posts.map(async (postId) => {
+        const post = await Post.findById(postId);
+        if (post.author.equals(user._id)) {
+          return post;
+        }
+        return null;
+      })
+    );
     user = {
       _id: user._id,
       username: user.username,
@@ -70,7 +84,7 @@ export const login = async (req, res) => {
       bio: user.bio,
       followers: user.followers,
       following: user.following,
-      posts: user.posts,
+      posts: populatedPosts,
     };
     return res
       .cookie("token", token, {
@@ -79,7 +93,7 @@ export const login = async (req, res) => {
         maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
       })
       .json({
-        message: `Welcome back ${user.username}`,
+        message: `Logged in successfully! Welcome back ${user.username}`,
         status: "success",
         user,
       });

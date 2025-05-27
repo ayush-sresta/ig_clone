@@ -181,15 +181,105 @@ export const addComment = async (req, res) => {
         status: "error",
       });
 
-      const comment = await Comment.create({
-        text,
-        author: whoComments,
-        post: postId
-      }).populate({
-        path: 'author',
-        select: 'username, profilePicture'
-      })
-      
+    const comment = await Comment.create({
+      text,
+      author: whoComments,
+      post: postId,
+    }).populate({
+      path: "author",
+      select: "username, profilePicture",
+    });
+    post.comments.push(comment._id);
+    await post.save();
+
+    return res.status(201).json({
+      message: "Comment added successfully!!",
+      comment,
+      success: "success",
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const getCommentsOfIndividualPosts = async (req, res) => {
+  try {
+    const postId = req.params.id;
+
+    const comment = await Comment.find({ post: postId }).populate(
+      "author",
+      "username, profilePicture"
+    );
+
+    if (!comment)
+      return res.status(404).json({
+        message: "No comments found for this post!!",
+        status: "error",
+      });
+    return res.status(200).json({ status: "success", comment });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const deletePost = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const authorId = req.id;
+    const post = await Post.findById(postId);
+
+    if (post.author.toString() !== authorId)
+      return res.status(403).json({
+        message: "Unauthorized",
+        status: "error",
+      });
+
+    let user = await User.findById(authorId);
+    user.posts = user.posts.filter((id) => id.toString() !== postId);
+    await Post.findByIdAndDelete(postId);
+    await user.save();
+
+    await Comment.deleteMany({ post: postId });
+
+    return res.status(200).json({
+      message: "Post deleted",
+      status: "success",
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const bookmarkPost = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const authorId = req.id;
+
+    const post = await Post.findById(postId);
+    if (!post)
+      return res.status(404).json({
+        message: "Post not found",
+        status: "error",
+      });
+
+    const user = await User.findById(authorId);
+
+    if (user.bookmarks.includes(post._id)) {
+      // already bookmarked
+      await user.updateOne({ $pull: { bookmarks: post._id } });
+      await user.save();
+      return res.status(200).json({
+        message: "Post removed from bookmark",
+        status: "success",
+      });
+    } else {
+      await user.updateOne({ $addToSet: { bookmarks: post._id } });
+      await user.save();
+      return res.status(200).json({
+        message: "Post added in bookmark",
+        status: "success",
+      });
+    }
   } catch (error) {
     console.log(error);
   }

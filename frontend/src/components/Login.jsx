@@ -6,12 +6,15 @@ import axios from 'axios'
 import { toast, ToastContainer } from 'react-toastify'
 import { NavLink, useNavigate } from 'react-router'
 import { Loader2 } from 'lucide-react'
+import { useDispatch } from 'react-redux'
+import { setAuthUser } from '@/redux/authSlice'
 
 const Login = () => {
     const [loginForm, setLoginForm] = useState({
         username: "",
         password: ""
     })
+    const dispatch = useDispatch()
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
     const handleLoginFormChange = (e) => {
@@ -20,7 +23,6 @@ const Login = () => {
     }
     const handleLoginFormSubmit = async (e) => {
         e.preventDefault()
-        console.log(loginForm);
         try {
             setLoading(true)
             const res = await axios.post("http://localhost:8000/api/v1/user/login", loginForm, {
@@ -33,10 +35,12 @@ const Login = () => {
                 username: "",
                 password: ""
             })
-            console.log(res);
-
+            console.log(res.data.user);
+            
             toast.success(res.data.message)
             setTimeout(() => {
+                dispatch(setAuthUser(res.data.user))
+                 // Dispatching the user data to the Redux store
                 navigate("/") // ⏳ Delay navigation
             }, 400)
         } catch (error) {
